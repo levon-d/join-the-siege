@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
 
 from src.classifier import classify_file
+from src.text_extraction import get_text_from_image, get_text_from_docx, get_text_from_pdf
 app = Flask(__name__)
 
-ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg'}
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', "docx"}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -21,7 +22,23 @@ def classify_file_route():
     if not allowed_file(file.filename):
         return jsonify({"error": f"File type not allowed"}), 400
 
-    file_class = classify_file(file)
+    filename = file.filename.lower()
+
+     # Attempt to classify based on file name
+    file_class = classify_file(file, "")
+    if file_class != "unknown file":
+        return jsonify({"file_class": file_class}), 200
+
+    if filename.endswith("pdf"): 
+        text = get_text_from_pdf(file)
+    
+    elif filename.endswith(("png", "jpg")): 
+        text = get_text_from_image(file)
+    
+    else: 
+        text = get_text_from_docx(file)
+    
+    file_class = classify_file(file, text)
     return jsonify({"file_class": file_class}), 200
 
 
